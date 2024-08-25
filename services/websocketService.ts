@@ -1,16 +1,16 @@
 import { Server } from 'http'
 import { WebSocketServer } from 'ws'
-import { getAllStats } from './statsService'
+import { getCachedStats } from './cacheService'
 
 export const setupWebSocket = (server: Server) => {
 	const wsServer = new WebSocketServer({ server })
 
 	wsServer.on('connection', async (connection) => {
-		const data = await getAllStats()
+		const data = await getCachedStats()
 		connection.send(JSON.stringify(data))
 
 		const intervalId = setInterval(async () => {
-			const data = await getAllStats()
+			const data = await getCachedStats()
 			connection.send(JSON.stringify(data))
 		}, 60000)
 
