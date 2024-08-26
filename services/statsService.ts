@@ -1,10 +1,29 @@
 import axios from 'axios'
+import rateLimit from 'axios-rate-limit'
+import axiosRetry from 'axios-retry'
 import { regions } from '../utils/constants'
 import { Stat } from '../types'
 
 const getStats = async (region: string): Promise<Stat> => {
 	const url = `https://data--${region}.upscope.io/status?stats=1`
-	const response = await axios.get(url)
+
+	const http = rateLimit(axios.create(), {
+		maxRequests: 1,
+		perMilliseconds: 1000,
+		maxRPS: 1,
+	})
+
+	axiosRetry(http, {
+		retries: 20,
+		retryDelay: axiosRetry.exponentialDelay,
+		retryCondition: async (error) => {
+			return !!(
+				error.request ||
+				(error.response && error.response.status === 429)
+			)
+		},
+	})
+	const response = await http.get(url)
 	return response.data
 }
 const sanitiseStats = (statList: Stat) => {
