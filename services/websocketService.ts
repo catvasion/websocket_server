@@ -10,23 +10,56 @@ export const setupWebSocket = (server: Server) => {
 
 	wsServer.on('connection', async (connection) => {
 		if (currentConnections >= maxConnections) {
-			connection.close(1013, 'Server overload')
+			const errorResponse = {
+				data: null,
+				error: {
+					code: 1013,
+					message: 'Server overload',
+				},
+			}
+			connection.send(JSON.stringify(errorResponse))
+			connection.close()
 			return
 		}
 
 		currentConnections++
-		const data = await getCachedStats()
-		connection.send(JSON.stringify(data))
+		let intervalId: NodeJS.Timeout | null = null
 
-		const intervalId = setInterval(async () => {
-			const data = await getCachedStats()
-			connection.send(JSON.stringify(data))
-		}, 60000)
-
-		connection.on('close', () => {
-			console.log('Client disconnected')
-			clearInterval(intervalId)
+		const handleClose = () => {
+			if (intervalId) clearInterval(intervalId)
 			currentConnections--
-		})
+		}
+		try {
+			const data = await getCachedStats()
+
+			connection.send(
+				JSON.stringify({
+					data,
+					error: null,
+				})
+			)
+
+			intervalId = setInterval(async () => {
+				const data = await getCachedStats()
+
+				connection.send(
+					JSON.stringify({
+						data,
+						error: null,
+					})
+				)
+			}, 60000)
+		} catch (error) {
+			const errorResponse = {
+				data: null,
+				error: {
+					code: 500,
+					message: 'Internal Server Error: Unable to fetch or process data',
+				},
+			}
+			connection.send(JSON.stringify(errorResponse))
+		} finally {
+			connection.on('close', handleClose)
+		}
 	})
 }

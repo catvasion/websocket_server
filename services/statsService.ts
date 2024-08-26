@@ -46,13 +46,9 @@ export const getAllStats = async () => {
 	const statsByRegion = []
 
 	for (const region of regions) {
-		try {
-			const statList = await getStats(region)
-			const sanitisedStats = sanitiseStats(statList)
-			statsByRegion.push(sanitisedStats)
-		} catch (error) {
-			console.error(`Error fetching stats for region ${region}:`, error)
-		}
+		const statList = await getStats(region)
+		const sanitisedStats = sanitiseStats(statList)
+		statsByRegion.push(sanitisedStats)
 	}
 
 	return statsByRegion
